@@ -102,7 +102,10 @@ class GrokServerHelpersTest(unittest.TestCase):
             self.assertEqual(server.resolve_grok_bin(), "C:\\Tools\\grok.cmd")
 
     def test_resolve_grok_bin_errors_clearly(self) -> None:
-        with mock.patch.dict(os.environ, {"GROK_BIN": ""}, clear=False), mock.patch("shutil.which", return_value=None):
+        completed = subprocess.CompletedProcess(["where.exe", "grok"], 1, stdout="", stderr="")
+        with mock.patch.dict(os.environ, {"GROK_BIN": ""}, clear=False), mock.patch(
+            "shutil.which", return_value=None
+        ), mock.patch("subprocess.run", return_value=completed):
             with self.assertRaisesRegex(FileNotFoundError, "Grok Build CLI was not found"):
                 server.resolve_grok_bin()
 
