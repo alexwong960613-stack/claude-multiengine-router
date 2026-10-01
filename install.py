@@ -416,7 +416,12 @@ class Installer:
             return
 
         mcp_target = self.config.claude_home / "mcp-servers" / "grok-mcp"
-        self.run_subprocess([self.config.python_bin, "-m", "venv", mcp_target / ".venv"])
+        venv_path = mcp_target / ".venv"
+
+        # Skip venv creation if it already exists
+        if not venv_path.exists():
+            self.run_subprocess([self.config.python_bin, "-m", "venv", venv_path])
+
         venv_python = venv_python_path(mcp_target, self.config.platform_name)
         self.run_subprocess([venv_python, "-m", "pip", "install", "--upgrade", "pip"])
         self.run_subprocess([venv_python, "-m", "pip", "install", "-r", mcp_target / "requirements.txt"])
@@ -550,7 +555,7 @@ def build_config(args: argparse.Namespace, env: Mapping[str, str] | None = None)
         python_bin=python_bin,
         timestamp=_now_timestamp(),
         dry_run=args.dry_run,
-        skip_auth_check=env.get("AGENT_ROUTER_SKIP_AUTH_CHECK") == "1",
+        skip_auth_check=env.get("AGENT_ROUTER_SKIP_AUTH_CHECK") == "1" or getattr(args, "skip_codex_auth", False),
         skip_venv=env.get("AGENT_ROUTER_SKIP_VENV") == "1",
         skip_mcp_add=env.get("AGENT_ROUTER_SKIP_MCP_ADD") == "1",
     )
@@ -589,6 +594,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Install claude-multiengine-router into the user-scoped Claude home.")
     parser.add_argument("--dry-run", action="store_true", help="Resolve config and print the planned install without writing files.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable output for --dry-run.")
+    parser.add_argument("--skip-codex-auth", action="store_true", help="Skip Codex authentication check (for custom providers).")
     parser.add_argument(
         "--platform",
         choices=("auto", "Darwin", "Linux", "Windows"),
